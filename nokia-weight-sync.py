@@ -351,6 +351,12 @@ elif command == 'sync':
             save_config()
             sys.exit(0)
 
+        # Get height for BMI calculation
+        height = None
+        m = client_nokia.get_measures(limit=1, meastype=types['height'])
+        if len(m):
+            height = m[0].get_measure(types['height'])
+
         # create fit file
         fit = FitEncoder_Weight()
 
@@ -363,8 +369,14 @@ elif command == 'sync':
             weight = m.get_measure(types['weight'])
             if weight:
                 hyd_percent = m.get_measure(types['hydration']) / m.get_measure(types['weight']) * 100
+                
+                bmi = None
+                if height:
+                    bmi = round(weight / pow(height, 2), 1)
+
                 fit.write_weight_scale(timestamp=m.date.timestamp, weight=weight, percent_fat=m.get_measure(types['fat_ratio']),
-                                       percent_hydration=hyd_percent, bone_mass=m.get_measure(types['bone_mass']), muscle_mass=m.get_measure(types['muscle_mass']))
+                    percent_hydration=hyd_percent, bone_mass=m.get_measure(types['bone_mass']), muscle_mass=m.get_measure(types['muscle_mass']),
+                    bmi=bmi)
 
         fit.finish()
     
