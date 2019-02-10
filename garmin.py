@@ -253,5 +253,9 @@ class GarminConnect(object):
                 print("Bad response during GC upload: " + str(res.status_code))
                 raise APIException("Bad response during GC upload: %s %s" % (res.status_code, res.text))
 
+        # -- for debugging --
+        print ("res: %s" % res.status_code)
+        print ("resp: %s" % resp)
+
         return (res.status_code == 200 or res.status_code == 201 or res.status_code == 204)
 

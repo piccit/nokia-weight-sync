@@ -339,7 +339,7 @@ elif command == 'sync':
     if len(groups) == 0:
         print("Their is no new measurement to sync.")
         save_config()
-        sys.exit(0);
+        sys.exit(0)
 
     if service == 'garmin':
 
@@ -353,16 +353,25 @@ elif command == 'sync':
 
         # create fit file
         fit = FitEncoder_Weight()
-        fit.write_file_info()
-        fit.write_file_creator()
+
+        # Removed these two because Garmin was rejecting files (error code 500)
+        # fit.write_file_info()
+        # fit.write_file_creator()
+
         fit.write_device_info(timestamp=next_sync)
         for m in groups:
-            weight = m.get_measure(types['weight']);
+            weight = m.get_measure(types['weight'])
             if weight:
+                hyd_percent = m.get_measure(types['hydration']) / m.get_measure(types['weight']) * 100
                 fit.write_weight_scale(timestamp=m.date.timestamp, weight=weight, percent_fat=m.get_measure(types['fat_ratio']),
-                    percent_hydration=m.get_measure(types['hydration']), bone_mass=m.get_measure(types['bone_mass']), muscle_mass=m.get_measure(types['muscle_mass']))
+                                       percent_hydration=hyd_percent, bone_mass=m.get_measure(types['bone_mass']), muscle_mass=m.get_measure(types['muscle_mass']))
 
         fit.finish()
+    
+        #save off fit file for troubleshooting
+        # fitValue = fit.getvalue()
+        # file = open("test.fit", "wb+")
+        # file.write(fitValue)
 
         garmin = GarminConnect()
         session = garmin.login(config.get('garmin','username'), config.get('garmin','password'))

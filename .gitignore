@@ -1,5 +1,9 @@
 # nokia-to-garmin-weight
 *.ini
+*.backup
+*.bak
+*.fit
+.vscode/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
