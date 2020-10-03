@@ -27,19 +27,26 @@ import ssl
 nokia_auth_code = None
 
 # Extremely basic HTTP server for handling authorization response
+
+
 class AuthorizationRepsponseHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global nokia_auth_code
-        nokia_auth_code = parse_qs(urlparse(self.path).query).get('code', None)[0]
+        nokia_auth_code = parse_qs(
+            urlparse(self.path).query).get('code', None)[0]
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write('<html><body><h1>Authorization successful!</h1></body></html>'.encode('utf-8'))
+        self.wfile.write(
+            '<html><body><h1>Authorization successful!</h1></body></html>'.encode('utf-8'))
 
 # Do command processing
+
+
 class MyParser(OptionParser):
     def format_epilog(self, formatter):
         return self.epilog
+
 
 usage = "usage: %prog [options] command [service]"
 epilog = """
@@ -52,13 +59,16 @@ Services:
 Copyright (c) 2018 by Jacco Geul <jacco@geul.net>
 Licensed under GNU General Public License 3.0 <https://github.com/magnific0/nokia-weight-sync/LICENSE>
 """
-parser = MyParser(usage=usage,epilog=epilog,version=__version__)
+parser = MyParser(usage=usage, epilog=epilog, version=__version__)
 
 parser.add_option('-k', '--key', dest='key', help="Key/Username")
 parser.add_option('-s', '--secret', dest='secret', help="Secret/Password")
-parser.add_option('-u', '--callback', dest='callback', help="Callback/redirect URI")
-parser.add_option('-a', '--authorization-server', dest='auth_serv', action="store_true", default=None, help="Authorization server")
-parser.add_option('-c', '--config', dest='config', default='config.ini', help="Config file")
+parser.add_option('-u', '--callback', dest='callback',
+                  help="Callback/redirect URI")
+parser.add_option('-a', '--authorization-server', dest='auth_serv',
+                  action="store_true", default=None, help="Authorization server")
+parser.add_option('-c', '--config', dest='config',
+                  default='config.ini', help="Config file")
 
 (options, args) = parser.parse_args()
 
@@ -75,9 +85,11 @@ config.read(options.config)
 # Decode the Garmin password
 if config.has_section('garmin'):
     if config.has_option('garmin', 'password'):
-        config.set('garmin', 'password', base64.b64decode(config.get('garmin', 'password').encode('ascii')).decode('ascii'))
+        config.set('garmin', 'password', base64.b64decode(
+            config.get('garmin', 'password').encode('ascii')).decode('ascii'))
 
-def setup_nokia( options, config ):
+
+def setup_nokia(options, config):
     """ Setup the Nokia Health API
     """
     global nokia_auth_code
@@ -89,10 +101,12 @@ def setup_nokia( options, config ):
         options.secret = input('Please enter the consumer secret: ')
 
     if options.callback is None:
-        options.callback = input('Please enter the callback url known by Nokia: ')
+        options.callback = input(
+            'Please enter the callback url known by Nokia: ')
 
     if options.auth_serv is None:
-        auth_serv_resp = input('Spin up HTTP server to automate authorization? [y/n] : ')
+        auth_serv_resp = input(
+            'Spin up HTTP server to automate authorization? [y/n] : ')
         if auth_serv_resp is 'y':
             options.auth_serv = True
         else:
@@ -107,21 +121,25 @@ def setup_nokia( options, config ):
         certfile = None
         if httpd_ssl and not certfile:
             print("Your callback url is over https, but no certificate is present.")
-            print("Change the scheme to http (also over at Nokia!) or specify a certfile above.")
+            print(
+                "Change the scheme to http (also over at Nokia!) or specify a certfile above.")
             exit(0)
 
     auth = nokia.NokiaAuth(options.key, options.secret, options.callback)
     authorize_url = auth.get_authorize_url()
-    print("Visit: %s\nand select your user and click \"Allow this app\"." % authorize_url)
+    print("Visit: %s\nand select your user and click \"Allow this app\"." %
+          authorize_url)
 
     if options.auth_serv:
         httpd = HTTPServer(('', httpd_port), AuthorizationRepsponseHandler)
         if httpd_ssl:
-            httpd.socket = ssl.wrap_socket(httpd.socket, certfile=certfile, server_side=True)
+            httpd.socket = ssl.wrap_socket(
+                httpd.socket, certfile=certfile, server_side=True)
         httpd.socket.settimeout(100)
         httpd.handle_request()
     else:
-        print("After redirection to your callback url find the authorization code in the url.")
+        print(
+            "After redirection to your callback url find the authorization code in the url.")
         print("Example: https://your_original_callback?code=abcdef01234&state=XFZ")
         print("         example value to copy: abcdef01234")
         nokia_auth_code = input('Please enter the authorization code: ')
@@ -139,7 +157,8 @@ def setup_nokia( options, config ):
     config.set('nokia', 'refresh_token', creds.refresh_token)
     config.set('nokia', 'user_id', creds.user_id)
 
-def setup_garmin( options, config ):
+
+def setup_garmin(options, config):
     """ Setup the Garmin Connect credentials
     """
 
@@ -147,7 +166,8 @@ def setup_garmin( options, config ):
         options.key = input('Please enter your Garmin Connect username: ')
 
     if options.secret is None:
-        options.secret = getpass.getpass('Please enter your Garmin Connect password: ')
+        options.secret = getpass.getpass(
+            'Please enter your Garmin Connect password: ')
 
     # Test out our new powers
     garmin = GarminConnect()
@@ -159,22 +179,27 @@ def setup_garmin( options, config ):
     config.set('garmin', 'username', options.key)
     config.set('garmin', 'password', options.secret)
 
-def setup_smashrun( options, config ):
+
+def setup_smashrun(options, config):
     """ Setup Smashrun API implicit user level authentication
     """
-    mobile = MobileApplicationClient('client') # implicit flow
-    client = Smashrun(client_id='client',client=mobile,client_secret='my_secret',redirect_uri='https://httpbin.org/get')
+    mobile = MobileApplicationClient('client')  # implicit flow
+    client = Smashrun(client_id='client', client=mobile,
+                      client_secret='my_secret', redirect_uri='https://httpbin.org/get')
     auth_url = client.get_auth_url()
-    print("Go to '%s' and log into Smashrun. After redirection, copy the access_token from the url." % auth_url[0])
-    print("Example url: https://httpbin.org/get#access_token=____01234-abcdefghijklmnopABCDEFGHIJLMNOP01234567890&token_type=[...]")
+    print("Go to '%s' and log into Smashrun. After redirection, copy the access_token from the url." %
+          auth_url[0])
+    print(
+        "Example url: https://httpbin.org/get#access_token=____01234-abcdefghijklmnopABCDEFGHIJLMNOP01234567890&token_type=[...]")
     print("Example access_token: ____01234-abcdefghijklmnopABCDEFGHIJLMNOP01234567890")
-    token = input("Please enter your access token: " )
+    token = input("Please enter your access token: ")
     if not config.has_section('smashrun'):
         config.add_section('smashrun')
     config.set('smashrun', 'token', urllib.parse.unquote(token))
     config.set('smashrun', 'type', 'implicit')
 
-def setup_smashrun_code( options, config ):
+
+def setup_smashrun_code(options, config):
     """ Setup Smashrun API explicit code flow (for applications)
     """
     if options.key is None:
@@ -184,7 +209,8 @@ def setup_smashrun_code( options, config ):
     if options.secret is None:
         options.secret = input('Please enter the client secret: ')
 
-    client = Smashrun(client_id=options.key,client_secret=options.secret,redirect_uri='urn:ietf:wg:oauth:2.0:auto')
+    client = Smashrun(client_id=options.key, client_secret=options.secret,
+                      redirect_uri='urn:ietf:wg:oauth:2.0:auto')
     auth_url = client.get_auth_url()
     print("Go to '%s' and authorize this application." % auth_url[0])
     code = input('Please enter your the code provided: ')
@@ -198,11 +224,13 @@ def setup_smashrun_code( options, config ):
     config.set('smashrun', 'refresh_token', resp['refresh_token'])
     config.set('smashrun', 'type', 'code')
 
+
 def save_config():
     # Encode the Garmin password
     if config.has_section('garmin'):
         if config.has_option('garmin', 'password'):
-            config.set('garmin', 'password', base64.b64encode( config.get('garmin', 'password').encode('ascii') ).decode('ascii'))
+            config.set('garmin', 'password', base64.b64encode(
+                config.get('garmin', 'password').encode('ascii')).decode('ascii'))
 
     # New Nokia tokens (if refreshed)
     if client_nokia:
@@ -218,7 +246,8 @@ def save_config():
 
     print("Config file saved to %s" % options.config)
 
-def auth_nokia( config ):
+
+def auth_nokia(config):
     """ Authenticate client with Nokia Health
     """
     creds = nokia.NokiaCredentials(config.get('nokia', 'access_token'),
@@ -232,23 +261,26 @@ def auth_nokia( config ):
     client = nokia.NokiaApi(creds)
     return client
 
-def auth_smashrun( config ):
+
+def auth_smashrun(config):
     """ Authenticate client with Smashrun
     """
 
     if config.get('smashrun', 'type') == 'code':
         client = Smashrun(client_id=config.get('smashrun', 'client_id'),
-                        client_secret=config.get('smashrun', 'client_secret'))
-        client.refresh_token(refresh_token=config.get('smashrun', 'refresh_token'))
+                          client_secret=config.get('smashrun', 'client_secret'))
+        client.refresh_token(refresh_token=config.get(
+            'smashrun', 'refresh_token'))
     else:
-        mobile = MobileApplicationClient('client') # implicit flow
+        mobile = MobileApplicationClient('client')  # implicit flow
         client = Smashrun(client_id='client', client=mobile,
-                        token={'access_token':config.get('smashrun', 'token'),'token_type':'Bearer'})
+                          token={'access_token': config.get('smashrun', 'token'), 'token_type': 'Bearer'})
     return client
+
 
 client_nokia = None
 if command != 'setup':
-    client_nokia = auth_nokia( config )
+    client_nokia = auth_nokia(config)
 
 if command == 'setup':
 
@@ -259,13 +291,13 @@ if command == 'setup':
         sys.exit(1)
 
     if service == 'nokia':
-        setup_nokia( options, config )
+        setup_nokia(options, config)
     elif service == 'garmin':
-        setup_garmin( options, config )
+        setup_garmin(options, config)
     elif service == 'smashrun':
-        setup_smashrun( options, config )
+        setup_smashrun(options, config)
     elif service == 'smashrun_code':
-        setup_smashrun_code( options, config )
+        setup_smashrun_code(options, config)
     else:
         print('Unknown service (%s), available services are: nokia, garmin, smashrun, smashrun_code.')
         sys.exit(1)
@@ -310,7 +342,8 @@ elif command == 'sync-preview':
         sys.exit(1)
 
     # Get next measurements
-    last_sync = int(config.get(service,'last_sync')) if config.has_option(service, 'last_sync') else 0
+    last_sync = int(config.get(service, 'last_sync')
+                    ) if config.has_option(service, 'last_sync') else 0
     mall = client_nokia.get_measures(lastupdate=last_sync)
 
     for n, m in enumerate(mall):
@@ -332,7 +365,8 @@ elif command == 'sync':
         sys.exit(1)
 
     # Get next measurements
-    last_sync = int(config.get(service,'last_sync')) if config.has_option(service, 'last_sync') else 0
+    last_sync = int(config.get(service, 'last_sync')
+                    ) if config.has_option(service, 'last_sync') else 0
     groups = client_nokia.get_measures(lastupdate=last_sync)
     types = dict(nokia.NokiaMeasureGroup.MEASURE_TYPES)
 
@@ -360,37 +394,53 @@ elif command == 'sync':
         # create fit file
         fit = FitEncoder_Weight()
 
-        # Removed these two because Garmin was rejecting files (error code 500)
-        # fit.write_file_info()
-        # fit.write_file_creator()
+        fit.write_file_info()
+        fit.write_file_creator()
 
         fit.write_device_info(timestamp=next_sync)
         for m in groups:
             weight = m.get_measure(types['weight'])
             if weight:
-                hyd_percent = m.get_measure(types['hydration']) / m.get_measure(types['weight']) * 100
-                
+                hyd_percent = None
+                fat = None
+                bone = None
+                muscle = None
+                if m.get_measure(types['fat_ratio']):
+                    fat = m.get_measure(types['fat_ratio'])
+
+                if m.get_measure(types['bone_mass']):
+                    bone = m.get_measure(types['bone_mass'])
+
+                if m.get_measure(types['muscle_mass']):
+                    muscle = m.get_measure(types['muscle_mass'])
+
+                if m.get_measure(types['hydration']):
+                    hyd_percent = m.get_measure(
+                        types['hydration']) / m.get_measure(types['weight']) * 100
+
                 bmi = None
                 if height:
                     bmi = round(weight / pow(height, 2), 1)
 
-                fit.write_weight_scale(timestamp=m.date.timestamp, weight=weight, percent_fat=m.get_measure(types['fat_ratio']),
-                    percent_hydration=hyd_percent, bone_mass=m.get_measure(types['bone_mass']), muscle_mass=m.get_measure(types['muscle_mass']),
-                    bmi=bmi)
+                fit.write_weight_scale(timestamp=m.date.timestamp, weight=weight, percent_fat=fat,
+                                       percent_hydration=hyd_percent, bone_mass=bone, muscle_mass=muscle,
+                                       bmi=bmi)
 
         fit.finish()
-    
-        #save off fit file for troubleshooting
-        # fitValue = fit.getvalue()
-        # file = open("test.fit", "wb+")
+
+        # save off fit file for troubleshooting
+        #fitValue = fit.getvalue()
+        #file = open("test.fit", "wb+")
         # file.write(fitValue)
 
         garmin = GarminConnect()
-        session = garmin.login(config.get('garmin','username'), config.get('garmin','password'))
+        session = garmin.login(config.get(
+            'garmin', 'username'), config.get('garmin', 'password'))
         r = garmin.upload_file(fit.getvalue(), session)
         if r:
-            print("%d weights has been successfully updated to Garmin!" % (len(groups)))
-            config.set('garmin','last_sync', str(next_sync))
+            print("%d weights has been successfully updated to Garmin!" %
+                  (len(groups)))
+            config.set('garmin', 'last_sync', str(next_sync))
 
     elif service == 'smashrun':
 
@@ -400,23 +450,24 @@ elif command == 'sync':
             if weight:
                 break
 
-        print("Last weight from Nokia Health: %s kg taken at %s" % (weight, m.date))
-
+        print("Last weight from Nokia Health: %s kg taken at %s" %
+              (weight, m.date))
 
         # Do not repeatidly sync the same value
         if config.has_option('smashrun', 'last_sync'):
-            if m.date.timestamp == int(config.get('smashrun','last_sync')):
+            if m.date.timestamp == int(config.get('smashrun', 'last_sync')):
                 print('Last measurement was already synced')
                 save_config()
                 sys.exit(0)
 
-        client_smashrun = auth_smashrun( config )
+        client_smashrun = auth_smashrun(config)
 
-        resp = client_smashrun.create_weight( weight, m.date.format('YYYY-MM-DD') )
+        resp = client_smashrun.create_weight(
+            weight, m.date.format('YYYY-MM-DD'))
 
         if resp.status_code == 200:
             print('Weight has been successfully updated to Smashrun!')
-            config.set('smashrun','last_sync', str(m.date.timestamp))
+            config.set('smashrun', 'last_sync', str(m.date.timestamp))
 
     else:
         print('Unknown service (%s), available services are: nokia, garmin, smashrun')
